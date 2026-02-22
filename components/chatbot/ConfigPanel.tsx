@@ -60,7 +60,7 @@ export function ConfigPanel({ chatbotId, initialData }: ConfigPanelProps) {
   React.useEffect(() => {
     const loadProviders = async () => {
       try {
-        const data = await apiClient.getChatbotProviders();
+        const data = await apiClient.getLLMProviders();
         setProviders(data.providers || []);
       } catch (e) {
         console.error('[v0] Failed to load providers:', e);

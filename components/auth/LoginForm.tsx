@@ -15,7 +15,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { auth } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
@@ -46,10 +52,11 @@ export function LoginForm() {
 
     try {
       const response = await apiClient.login(values.email, values.password);
-      
+
       // Store tokens and user info
       auth.setTokens(response.tokens);
-      auth.setUser(response.user);
+      const user = response.user || (await apiClient.getMe());
+      auth.setUser(user);
 
       // Redirect to dashboard
       router.push('/dashboard');
@@ -62,30 +69,32 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className='w-full max-w-md'>
       <CardHeader>
         <CardTitle>Sign In</CardTitle>
-        <CardDescription>Enter your email and password to access your dashboard</CardDescription>
+        <CardDescription>
+          Enter your email and password to access your dashboard
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
             {error && (
-              <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              <div className='p-3 bg-destructive/10 text-destructive rounded-md text-sm'>
                 {error}
               </div>
             )}
 
             <FormField
               control={form.control}
-              name="email"
+              name='email'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="you@example.com"
-                      type="email"
+                      placeholder='you@example.com'
+                      type='email'
                       disabled={isLoading}
                       {...field}
                     />
@@ -97,14 +106,14 @@ export function LoginForm() {
 
             <FormField
               control={form.control}
-              name="password"
+              name='password'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="••••••••"
-                      type="password"
+                      placeholder='••••••••'
+                      type='password'
                       disabled={isLoading}
                       {...field}
                     />
@@ -114,19 +123,18 @@ export function LoginForm() {
               )}
             />
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full"
-            >
+            <Button type='submit' disabled={isLoading} className='w-full'>
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
         </Form>
 
-        <div className="mt-4 text-center text-sm">
+        <div className='mt-4 text-center text-sm'>
           Don't have an account?{' '}
-          <Link href="/signup" className="text-primary hover:underline font-medium">
+          <Link
+            href='/signup'
+            className='text-primary hover:underline font-medium'
+          >
             Sign up
           </Link>
         </div>

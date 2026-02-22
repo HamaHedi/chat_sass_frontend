@@ -15,20 +15,28 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { auth } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
 
-const formSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string(),
-  tenantName: z.string().optional(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const formSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+    tenantName: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -55,12 +63,13 @@ export function SignupForm() {
       const response = await apiClient.signup(
         values.email,
         values.password,
-        values.tenantName || undefined
+        values.tenantName || undefined,
       );
 
       // Store tokens and user info
       auth.setTokens(response.tokens);
-      auth.setUser(response.user);
+      const user = response.user || (await apiClient.getMe());
+      auth.setUser(user);
 
       // Redirect to dashboard
       router.push('/dashboard');
@@ -73,30 +82,30 @@ export function SignupForm() {
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className='w-full max-w-md'>
       <CardHeader>
         <CardTitle>Create Account</CardTitle>
         <CardDescription>Sign up to start building AI chatbots</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
             {error && (
-              <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              <div className='p-3 bg-destructive/10 text-destructive rounded-md text-sm'>
                 {error}
               </div>
             )}
 
             <FormField
               control={form.control}
-              name="email"
+              name='email'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="you@example.com"
-                      type="email"
+                      placeholder='you@example.com'
+                      type='email'
                       disabled={isLoading}
                       {...field}
                     />
@@ -108,14 +117,14 @@ export function SignupForm() {
 
             <FormField
               control={form.control}
-              name="password"
+              name='password'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="••••••••"
-                      type="password"
+                      placeholder='••••••••'
+                      type='password'
                       disabled={isLoading}
                       {...field}
                     />
@@ -127,14 +136,14 @@ export function SignupForm() {
 
             <FormField
               control={form.control}
-              name="confirmPassword"
+              name='confirmPassword'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="••••••••"
-                      type="password"
+                      placeholder='••••••••'
+                      type='password'
                       disabled={isLoading}
                       {...field}
                     />
@@ -146,13 +155,13 @@ export function SignupForm() {
 
             <FormField
               control={form.control}
-              name="tenantName"
+              name='tenantName'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Organization Name (Optional)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Your company"
+                      placeholder='Your company'
                       disabled={isLoading}
                       {...field}
                     />
@@ -162,19 +171,18 @@ export function SignupForm() {
               )}
             />
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full"
-            >
+            <Button type='submit' disabled={isLoading} className='w-full'>
               {isLoading ? 'Creating account...' : 'Sign Up'}
             </Button>
           </form>
         </Form>
 
-        <div className="mt-4 text-center text-sm">
+        <div className='mt-4 text-center text-sm'>
           Already have an account?{' '}
-          <Link href="/login" className="text-primary hover:underline font-medium">
+          <Link
+            href='/login'
+            className='text-primary hover:underline font-medium'
+          >
             Sign in
           </Link>
         </div>

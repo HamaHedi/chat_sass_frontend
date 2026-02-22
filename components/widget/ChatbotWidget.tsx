@@ -16,29 +16,35 @@ interface Message {
 }
 
 interface ChatbotWidgetProps {
-  chatbotId: string;
+  chatbotId?: string;
+  widgetToken?: string;
   apiBaseUrl?: string;
   mode?: 'chat' | 'rag';
+  title?: string | null;
+  primaryColor?: string | null;
+  logoUrl?: string | null;
+  provider?: string | null;
   onModeChange?: (mode: 'chat' | 'rag') => void;
 }
 
 export function ChatbotWidget({
   chatbotId,
+  widgetToken,
   apiBaseUrl,
   mode = 'chat',
+  title,
+  primaryColor,
+  logoUrl,
+  provider,
   onModeChange,
 }: ChatbotWidgetProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Hello! I'm here to help. How can I assist you today?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentMode, setCurrentMode] = useState<'chat' | 'rag'>(mode);
+  const [resolvedProvider, setResolvedProvider] = useState<string | null>(
+    provider || null,
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -48,6 +54,33 @@ export function ChatbotWidget({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    setResolvedProvider(provider || null);
+  }, [provider]);
+
+  useEffect(() => {
+    const loadProvider = async () => {
+      if (widgetToken) return;
+      if (!chatbotId) return;
+      if (provider) return;
+
+      try {
+        const data: any = await apiClient.getChatbot(chatbotId);
+        const p =
+          data?.provider ??
+          data?.llm_provider ??
+          data?.llmProvider ??
+          data?.llm_provider_name ??
+          null;
+        setResolvedProvider(p);
+      } catch (e) {
+        console.error('[v0] Failed to load chatbot provider:', e);
+      }
+    };
+
+    loadProvider();
+  }, [chatbotId, widgetToken, provider]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -67,18 +100,50 @@ export function ChatbotWidget({
       let response;
 
       if (currentMode === 'rag') {
-        response = await apiClient.ragQuery(chatbotId, input, true);
+        const id = chatbotId;
+        if (!id) {
+          throw new Error('RAG mode is not available for anonymous widgets');
+        }
+        response = await apiClient.ragQuery(id, input, true);
       } else {
-        response = await apiClient.chatCompletions(
-          [
-            ...messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-            { role: 'user', content: input },
-          ],
-          null,
-        );
+        const payloadMessages = [
+          ...messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          { role: 'user', content: input },
+        ];
+
+        if (widgetToken) {
+          const baseUrl =
+            apiBaseUrl ||
+            process.env.NEXT_PUBLIC_API_BASE_URL ||
+            'http://localhost:8000';
+          const r = await fetch(`${baseUrl}/api/v1/chat/widget/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              widget_token: widgetToken,
+              messages: payloadMessages,
+            }),
+          });
+          if (!r.ok) {
+            throw new Error(`Widget request failed: ${r.status}`);
+          }
+          response = await r.json();
+        } else {
+          const id = chatbotId;
+          if (!id) {
+            throw new Error(
+              'chatbotId is required when widgetToken is not provided',
+            );
+          }
+          response = await apiClient.chatCompletions(
+            id,
+            payloadMessages,
+            resolvedProvider || '',
+          );
+        }
       }
 
       const assistantMessage: Message = {
@@ -109,16 +174,31 @@ export function ChatbotWidget({
   };
 
   const handleModeChange = (newMode: 'chat' | 'rag') => {
+    if (widgetToken && newMode === 'rag') return;
     setCurrentMode(newMode);
     onModeChange?.(newMode);
   };
 
+  const widgetTitle = title || 'Chat Assistant';
+  const headerStyle = primaryColor
+    ? ({ borderColor: primaryColor } as React.CSSProperties)
+    : undefined;
+  const userBubbleStyle = primaryColor
+    ? ({ backgroundColor: primaryColor, color: 'white' } as React.CSSProperties)
+    : undefined;
+
   return (
     <div className='flex flex-col h-full bg-background rounded-lg border border-border'>
       {/* Header */}
-      <div className='border-b border-border p-4'>
+      <div className='border-b border-border p-4' style={headerStyle}>
         <div className='flex items-center justify-between mb-3'>
-          <h3 className='font-semibold text-foreground'>Chat Assistant</h3>
+          <div className='flex items-center gap-2'>
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt='Logo' className='h-6 w-6 rounded' />
+            ) : null}
+            <h3 className='font-semibold text-foreground'>{widgetTitle}</h3>
+          </div>
           <div className='flex gap-1 bg-muted p-1 rounded'>
             <Button
               size='sm'
@@ -133,6 +213,7 @@ export function ChatbotWidget({
               variant={currentMode === 'rag' ? 'default' : 'ghost'}
               onClick={() => handleModeChange('rag')}
               className='text-xs'
+              disabled={!!widgetToken}
             >
               RAG
             </Button>
@@ -156,6 +237,7 @@ export function ChatbotWidget({
                   ? 'bg-primary text-primary-foreground rounded-br-none'
                   : 'bg-muted text-muted-foreground rounded-bl-none'
               }`}
+              style={message.role === 'user' ? userBubbleStyle : undefined}
             >
               <p className='text-sm break-words'>{message.content}</p>
               {message.sources && message.sources.length > 0 && (

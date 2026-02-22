@@ -63,8 +63,10 @@ export function CreateChatbotModal({
 
   const fetchProviders = async () => {
     try {
-      const data = await apiClient.getChatbotProviders();
-      setProviders((data.providers || []).map((p) => ({ id: p, name: p })));
+      const data = await apiClient.getLLMProviders();
+      setProviders(
+        (data.providers || []).map((p: string) => ({ id: p, name: p })),
+      );
     } catch (err: any) {
       console.error('[v0] Failed to fetch providers:', err);
       // Mock providers for demo
@@ -90,10 +92,10 @@ export function CreateChatbotModal({
     setIsLoading(true);
 
     try {
-      const newChatbot = await apiClient.createChatbot({
-        name: values.name,
-        provider: values.provider,
-      });
+      const newChatbot = await apiClient.createChatbot(
+        values.name,
+        values.provider,
+      );
       onChatbotCreated(newChatbot);
       form.reset();
       onOpenChange(false);
