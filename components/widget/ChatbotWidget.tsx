@@ -99,7 +99,7 @@ export function ChatbotWidget({
     try {
       let response;
 
-      if (currentMode === 'rag') {
+      if (currentMode === 'rag' && !widgetToken) {
         const id = chatbotId;
         if (!id) {
           throw new Error('RAG mode is not available for anonymous widgets');
@@ -119,6 +119,8 @@ export function ChatbotWidget({
             apiBaseUrl ||
             process.env.NEXT_PUBLIC_API_BASE_URL ||
             'http://localhost:8000';
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
           const r = await fetch(`${baseUrl}/api/v1/chat/widget/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -126,7 +128,8 @@ export function ChatbotWidget({
               widget_token: widgetToken,
               messages: payloadMessages,
             }),
-          });
+            signal: controller.signal,
+          }).finally(() => clearTimeout(timeoutId));
           if (!r.ok) {
             throw new Error(`Widget request failed: ${r.status}`);
           }
@@ -174,7 +177,6 @@ export function ChatbotWidget({
   };
 
   const handleModeChange = (newMode: 'chat' | 'rag') => {
-    if (widgetToken && newMode === 'rag') return;
     setCurrentMode(newMode);
     onModeChange?.(newMode);
   };
@@ -213,7 +215,6 @@ export function ChatbotWidget({
               variant={currentMode === 'rag' ? 'default' : 'ghost'}
               onClick={() => handleModeChange('rag')}
               className='text-xs'
-              disabled={!!widgetToken}
             >
               RAG
             </Button>
