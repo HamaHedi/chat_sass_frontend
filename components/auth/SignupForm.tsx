@@ -25,6 +25,7 @@ import {
 import { auth } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
 import Link from 'next/link';
+import { useAuth } from '@/components/AuthProvider';
 
 const formSchema = z
   .object({
@@ -42,8 +43,18 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function SignupForm() {
   const router = useRouter();
+  const { setAuthUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const getErrorMessage = (err: any) => {
+    return (
+      err?.data?.detail ||
+      err?.data?.message ||
+      err?.message ||
+      'Signup failed. Please try again.'
+    );
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -70,11 +81,13 @@ export function SignupForm() {
       auth.setTokens(response.tokens);
       const user = response.user || (await apiClient.getMe());
       auth.setUser(user);
+      setAuthUser(user);
 
       // Redirect to dashboard
-      router.push('/dashboard');
+      router.replace('/dashboard');
+      router.refresh();
     } catch (error: any) {
-      setError(error.message || 'Signup failed. Please try again.');
+      setError(getErrorMessage(error));
       console.error('[v0] Signup error:', error);
     } finally {
       setIsLoading(false);

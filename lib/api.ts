@@ -114,8 +114,13 @@ class ApiClient {
       const data = await response.json();
       return data as T;
     } catch (error) {
-      if (error instanceof Error && 'status' in error) {
-        throw error;
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        'message' in error
+      ) {
+        throw error as ApiError;
       }
       throw {
         message: error instanceof Error ? error.message : 'Unknown error',

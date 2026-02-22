@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { auth, User } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
 
@@ -8,12 +9,14 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  setAuthUser: (user: User | null) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,8 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     auth.clearAuth();
     setUser(null);
-    // Redirect to login (will be handled by middleware/route guards)
-    window.location.href = '/login';
+    router.replace('/login');
+    router.refresh();
   };
 
   return (
@@ -64,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        setAuthUser: setUser,
         logout,
       }}
     >
